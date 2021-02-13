@@ -75,57 +75,76 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
     
-    // Listen for the sender's message and store it:
-    int len_saddr = sizeof(sen_addr);
-    char message_rec[SIZE]; // Stores message received from sender
-    status = recvfrom(
-        // Socket:
-        sockfd,
-        // Store the received packet:
-        message_rec,
-        SIZE, // Length of the received message_sent buffer
-        // Flags:
-        MSG_WAITALL,
-        // Struct containing src address is returned: 
-        (struct sockaddr *) &sen_addr,
-        &len_saddr
-    );
-    if (status != -1){
-        message_rec[SIZE] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
-        printf("(Receiver) Received: '%s' from IP: %s and Port: %i\n", message_rec, inet_ntoa(sen_addr.sin_addr), ntohs(sen_addr.sin_port));
-    }
-    else{
-        perror("(Receiver) Packet not received");
-        exit(EXIT_FAILURE);
-    }
+    int i_ack = 0;
+    double drop_flag = 0;
+    while (1){
 
-    // Generate a random number in [0,1] and send ACK appropriately
-    double flag = ((double)rand())/((double)RAND_MAX);
-    printf("(Receiver) Drop flag: %f\n", flag);
-    if (flag >= drop_prob){
-        // Send the ACK to the sender:
-        char *ack = "Acknowledgment:1";
-        status = sendto(
+        // Listen for the sender's message and store it:
+        int len_saddr = sizeof(sen_addr);
+        char message_rec[SIZE]; // Stores message received from sender
+        status = recvfrom(
             // Socket:
             sockfd,
-            // Data to be sent:
-            ack,
-            strlen(ack), // Size of the ack to be sent
+            // Store the received packet:
+            message_rec,
+            SIZE, // Length of the received message_sent buffer
             // Flags:
-            MSG_CONFIRM,
-            // Destination Address:
-            (const struct sockaddr *) &sen_addr,
-            sizeof(sen_addr) // Size of the destination address struct
+            MSG_WAITALL,
+            // Struct containing src address is returned: 
+            (struct sockaddr *) &sen_addr,
+            &len_saddr
         );
-        if (status != -1)
-            printf("(Receiver) Sent: %s\n", ack);
-        else{
-            perror("(Receiver) An error occured while sending the ACK");
+        if (status == -1) {
+            perror("(Receiver) Error while receiving packet");
             exit(EXIT_FAILURE);
         }
-    }
-    else{
-        // Don't send the ACK, simulate packet dropping
+        else if (status == 0){
+            // No more packets to be received, orderly shutdown
+            printf("(Receiver) All packets received\n");
+            break;
+        }
+        else{
+            message_rec[SIZE] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
+            printf("(Receiver) Received: '%s' from IP: %s and Port: %i\n", message_rec, inet_ntoa(sen_addr.sin_addr), ntohs(sen_addr.sin_port));
+            // Get ack number from received packet
+            i_ack = message_rec[SIZE - 1] - '0'; // char to int conversion
+        }
+
+        // Generate a random number in [0,1] and send ACK appropriately
+        drop_flag = ((double)rand())/((double)RAND_MAX);
+        printf("(Receiver) Drop flag: %f\n", drop_flag);
+        if (drop_flag >= drop_prob){
+            
+            // Create the ACK in an appropriate format
+            char ack[16] = "Acknowledgment:";
+            char ack_no[128];
+            sprintf(ack_no, "%d", i_ack);
+            strcat(ack, ack_no);
+
+            // Send the ACK to the sender:
+            status = sendto(
+                // Socket:
+                sockfd,
+                // Data to be sent:
+                ack,
+                strlen(ack), // Size of the ack to be sent
+                // Flags:
+                MSG_CONFIRM,
+                // Destination Address:
+                (const struct sockaddr *) &sen_addr,
+                sizeof(sen_addr) // Size of the destination address struct
+            );
+            if (status != -1)
+                printf("(Receiver) Sent: %s\n", ack);
+            else{
+                perror("(Receiver) An error occured while sending the ACK");
+                exit(EXIT_FAILURE);
+            }
+        }
+        else{
+            // Don't send the ACK, simulate packet dropping
+            printf("(Receiver) Packet dropped, no ACK sent\n");
+        }
     }
 
     return 0;

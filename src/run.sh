@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Usage: bash run.sh <Senders Port> <Receivers Port> <Number of packets> <Timeout> <Drop probability>
-# Example: bash run.sh 8080 8000 1 1 0.2
+# Example: "bash run.sh 8080 8000 3 1 0.2"
 
 N_ARGS=$#
 if [ $N_ARGS -ne 5 ] 

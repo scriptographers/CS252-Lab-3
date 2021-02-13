@@ -97,51 +97,66 @@ int main(int argc, char *argv[]){
     rec_addr.sin_port = htons(rport);
     rec_addr.sin_addr.s_addr =  inet_addr(LOCAL_HOST);
     
-    // Send the data to the receiver:
-    char *message_sent = "Packet:1"; 
-    status = sendto(
-        // Socket:
-        sockfd,
-        // Data to be sent:
-        message_sent,
-        strlen(message_sent), // Size of the data to be sent
-        // Flags:
-        MSG_CONFIRM, // Tells the link layer that we you got a successful reply from the other side, reference: https://stackoverflow.com/questions/16594387/why-should-i-use-or-not-use-msg-confirm
-        // Destination Address:
-        (const struct sockaddr *) &rec_addr,
-        sizeof(rec_addr) // Size of the destination address struct
-    );
-    if (status != -1)
-        printf("(Sender) Sent: %s\n", message_sent);
-    else{
-        // Packet not sent
-        perror("(Sender) An error occured while sending the data");
-        exit(EXIT_FAILURE);
-    }
+    int i_pkt = 1;
+    while (1){
 
-    // Wait for receiver's response:
-    int len_raddr = sizeof(rec_addr);
-    char message_rec[SIZE];
-    status = recvfrom(
-        // Socket:
-        sockfd,
-        // Store the received ACK:
-        message_rec,
-        SIZE, // Length of the received message_sent buffer
-        // Flags: None
-        0,
-        // Struct containing src address is returned: 
-        (struct sockaddr *) &rec_addr,
-        &len_raddr
-    );
-    if (status != -1){
-        message_rec[SIZE] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
-        printf("(Sender) Received: '%s' from IP: %s and Port: %i\n", message_rec, inet_ntoa(rec_addr.sin_addr), ntohs(rec_addr.sin_port));
-    }
-    else{
-        // ACK not received
-        perror("(Sender) ACK not received, sender timed out");
-        exit(EXIT_FAILURE);
+        // Create the data in an appropriate format
+        char temp_pkt[128];
+        sprintf(temp_pkt, "%d", i_pkt);
+        char message_sent[8] = "Packet:";
+        strcat(message_sent, temp_pkt);
+
+        // Send the data to the receiver:
+        status = sendto(
+            // Socket:
+            sockfd,
+            // Data to be sent:
+            message_sent,
+            strlen(message_sent), // Size of the data to be sent
+            // Flags:
+            MSG_CONFIRM, // Tells the link layer that we you got a successful reply from the other side, reference: https://stackoverflow.com/questions/16594387/why-should-i-use-or-not-use-msg-confirm
+            // Destination Address:
+            (const struct sockaddr *) &rec_addr,
+            sizeof(rec_addr) // Size of the destination address struct
+        );
+        if (status != -1)
+            printf("(Sender) Sent: %s\n", message_sent);
+        else{
+            // Packet not sent
+            perror("(Sender) An error occured while sending the data");
+            exit(EXIT_FAILURE);
+        }
+
+        // Wait for receiver's response:
+        int len_raddr = sizeof(rec_addr);
+        char message_rec[SIZE];
+        status = recvfrom(
+            // Socket:
+            sockfd,
+            // Store the received ACK:
+            message_rec,
+            SIZE, // Length of the received message_sent buffer
+            // Flags: None
+            0,
+            // Struct containing src address is returned: 
+            (struct sockaddr *) &rec_addr,
+            &len_raddr
+        );
+        if (status != -1){
+            message_rec[SIZE] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
+            printf("(Sender) Received: '%s' from IP: %s and Port: %i\n\n", message_rec, inet_ntoa(rec_addr.sin_addr), ntohs(rec_addr.sin_port));
+            
+            i_pkt++; // Increment only when received ACK
+            if (i_pkt > n_pkts){
+                printf("(Common) All packets sent and received\n");
+                break;
+            }
+        }
+        else{
+            // ACK not received
+            perror("(Sender) ACK not received, sender timed out");
+            exit(EXIT_FAILURE);
+        }
     }
 
     // Close the socket:
