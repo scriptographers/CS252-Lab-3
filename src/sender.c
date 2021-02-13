@@ -153,9 +153,8 @@ int main(int argc, char *argv[]){
             }
         }
         else{
-            // ACK not received
-            perror("(Sender) ACK not received, sender timed out");
-            exit(EXIT_FAILURE);
+            // ACK not received, will automatically retransmit
+            printf("(Sender) ACK not received, sender timed out, will retransmit\n\n");
         }
     }
 
