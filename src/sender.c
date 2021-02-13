@@ -50,7 +50,7 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
 
-    // Specify timeout: Reference: https://stackoverflow.com/questions/13547721/udp-socket-set-timeout
+    // Specify retransmission timeout: Reference: https://stackoverflow.com/questions/13547721/udp-socket-set-timeout
     struct timeval tv;
     tv.tv_sec  = timeout; // in seconds
     tv.tv_usec = 0; // in microseconds
@@ -98,6 +98,7 @@ int main(int argc, char *argv[]){
     rec_addr.sin_addr.s_addr =  inet_addr(LOCAL_HOST);
     
     int i_pkt = 1;
+    int i_ack = 2;
     while (1){
 
         // Create the data in an appropriate format
@@ -146,14 +147,25 @@ int main(int argc, char *argv[]){
             message_rec[SIZE] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
             printf("(Sender) Received: '%s' from IP: %s and Port: %i\n\n", message_rec, inet_ntoa(rec_addr.sin_addr), ntohs(rec_addr.sin_port));
             
-            i_pkt++; // Increment only when received ACK
+            // Check whether ACK received has sequence number = i_pkt + 1
+            i_ack = (message_rec[SIZE - 1] - '0');
+            if (i_ack == i_pkt + 1){
+                // Received the proper ACK, increment i_pkt
+                i_pkt++;
+            }
+            else{
+                // Received a wrong ACK
+                printf("(Sender) Received a different ACK, ignoring it\n");
+            }
+
+            // Check whether the required number of packets have been transmitted:
             if (i_pkt > n_pkts){
-                printf("(Common) All packets sent and received\n");
+                printf("(Common) All packets sent and received successfully\n");
                 break;
             }
         }
         else{
-            // ACK not received, will automatically retransmit
+            // ACK not received, will automatically retransmit due to the while loop
             printf("(Sender) ACK not received, sender timed out, will retransmit\n\n");
         }
     }

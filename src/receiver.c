@@ -76,6 +76,7 @@ int main(int argc, char *argv[]){
     }
     
     int i_ack = 0;
+    int expected_packet = 1;
     double drop_flag = 0;
     while (1){
 
@@ -106,8 +107,28 @@ int main(int argc, char *argv[]){
         else{
             message_rec[SIZE] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
             printf("(Receiver) Received: '%s' from IP: %s and Port: %i\n", message_rec, inet_ntoa(sen_addr.sin_addr), ntohs(sen_addr.sin_port));
-            // Get ack number from received packet
-            i_ack = message_rec[SIZE - 1] - '0'; // char to int conversion
+            
+            // Get ack number from received packet:
+            i_ack = (message_rec[SIZE - 1] - '0') + 1; // char to int conversion, packet:1 must receive ack:2 as the acknowledgement
+            
+            // Check whether this was expected:
+            if (i_ack != expected_packet + 1){
+                if (expected_packet == 1){
+                    // The very first packet is of the wrong sequence number, important else receiver will think Packet:2 is the first packet
+                    printf("(Receiver) The first packet received is unexpected\n");
+                    // The PS doesn't specify what to do further in this case
+                }
+                else{
+                    // Wrong ACK received, send ack with the expected sequence number
+                    printf("(Receiver) Received an unexpected packet, will request the correct packet\n");
+                    i_ack = expected_packet + 1;
+                    expected_packet++;
+                }
+            }
+            else{
+                // Correct packet received
+                expected_packet++;
+            }
         }
 
         // Generate a random number in [0,1] and send ACK appropriately
@@ -143,6 +164,7 @@ int main(int argc, char *argv[]){
         }
         else{
             // Don't send the ACK, simulate packet dropping
+            expected_packet--;
             printf("(Receiver) Packet dropped, no ACK sent\n");
         }
     }
