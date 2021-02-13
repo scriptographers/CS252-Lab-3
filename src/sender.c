@@ -1,10 +1,10 @@
-#include <stdio.h> 
-#include <stdlib.h> 
+#include <stdio.h> // For IO operations
+#include <stdlib.h> // Standard Library
 #include <unistd.h> // Standard POSIX functions, like "close"
-#include <string.h> 
+#include <string.h> // String manipulation for string packets etc
 #include <sys/time.h> // For timeval struct
-#include <sys/socket.h> 
-#include <arpa/inet.h> 
+#include <sys/socket.h> // For socket programming 
+#include <arpa/inet.h> // Provides definitions for internet operations
 
 int status; // Used for error handling
 const int SIZE = 16;   // Length of strings like "Acknowledgment:1", hardcoded
@@ -72,6 +72,24 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
 
+    // Set sock options to completely close the socket, for immediate reuse:
+    int reuse_flag = 1;
+    status = setsockopt(
+        // The socket:
+        sockfd, 
+        // The socket layer, more info: https://stackoverflow.com/questions/21515946/what-is-sol-socket-used-for
+        SOL_SOCKET, 
+        // This option allows your server to bind to an address which is in a TIME_WAIT state 
+        SO_REUSEADDR,
+        // Setting to true
+        &reuse_flag,
+        sizeof(int)
+    );
+    if (status != 0){
+        perror("(Sender) An error occured while setting the socket options");
+        exit(EXIT_FAILURE);
+    }
+
     // Create the struct for the receiver's address:
     struct sockaddr_in rec_addr; // Specifies the receiver/destination address
     memset(&rec_addr, 0, sizeof(rec_addr)); 
@@ -109,9 +127,16 @@ int main(int argc, char *argv[]){
         // Struct containing src address is returned: 
         (struct sockaddr *) &rec_addr, 
         &len_raddr
-    ); 
-    message_rec[n] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
-    printf("(Sender) Received: %s\n", message_rec); 
+    );
+    if (n != -1){
+        message_rec[n] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
+        printf("(Sender) Received: %s\n", message_rec);
+    }
+    else{
+        // ACK not received
+        printf("(Sender) ACK not received, sender timed out\n");
+        exit(EXIT_FAILURE);
+    }
 
     // Close the socket:
     close(sockfd); 
