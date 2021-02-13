@@ -22,6 +22,10 @@ int main(int argc, char *argv[]){
     int timeout = atoi(argv[3]); // Timeout specified in seconds
     int n_pkts  = atoi(argv[4]); // No. of packets to be sent
 
+    // Initialize the sender's log file
+    FILE *s_log;
+    s_log = fopen("sender.txt", "w+"); // This also flushes any content already present
+
     // Create a UDP socket (a socket descriptor) for the sender:
     int sockfd = socket(
         AF_INET,    // IPv4
@@ -120,8 +124,11 @@ int main(int argc, char *argv[]){
             (const struct sockaddr *) &rec_addr,
             sizeof(rec_addr) // Size of the destination address struct
         );
-        if (status != -1)
+        if (status != -1){
             printf("(Sender) Sent: %s\n", message_sent);
+            // Also log this
+            fprintf(s_log, "Sent: %s\n", message_sent);
+        }
         else{
             // Packet not sent
             perror("(Sender) An error occured while sending the data");
@@ -144,14 +151,16 @@ int main(int argc, char *argv[]){
             &len_raddr
         );
         if (status != -1){
+
             message_rec[SIZE] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
             printf("(Sender) Received: '%s' from IP: %s and Port: %i\n\n", message_rec, inet_ntoa(rec_addr.sin_addr), ntohs(rec_addr.sin_port));
-            
+
             // Check whether ACK received has sequence number = i_pkt + 1
             i_ack = (message_rec[SIZE - 1] - '0');
             if (i_ack == i_pkt + 1){
                 // Received the proper ACK, increment i_pkt
                 i_pkt++;
+                fprintf(s_log, "\n");
             }
             else{
                 // Received a wrong ACK
@@ -167,10 +176,14 @@ int main(int argc, char *argv[]){
         else{
             // ACK not received, will automatically retransmit due to the while loop
             printf("(Sender) ACK not received, sender timed out, will retransmit\n\n");
+            fprintf(s_log, "Retransmission timer expired\n\n");
         }
     }
 
     // Close the socket:
     close(sockfd);
+    // Close the log file:
+    fclose(s_log);
+
     return 0;
 }

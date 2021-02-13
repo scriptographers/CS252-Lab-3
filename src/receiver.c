@@ -24,6 +24,10 @@ int main(int argc, char *argv[]){
     int sport = atoi(argv[2]); // Sender' port
     double drop_prob = atof(argv[3]); // Probability of dropping the received packet
 
+    // Initialize the receiver's log file
+    FILE *r_log;
+    r_log = fopen("receiver.txt", "w+"); // This also flushes any content already present
+
     // Create a UDP socket (a socket descriptor) for the receiver:
     int sockfd = socket(
         AF_INET,    // IPv4
@@ -155,8 +159,10 @@ int main(int argc, char *argv[]){
                 (const struct sockaddr *) &sen_addr,
                 sizeof(sen_addr) // Size of the destination address struct
             );
-            if (status != -1)
+            if (status != -1){
                 printf("(Receiver) Sent: %s\n", ack);
+                fprintf(r_log, "Sent: %s\n", ack);
+            }
             else{
                 perror("(Receiver) An error occured while sending the ACK");
                 exit(EXIT_FAILURE);
@@ -166,8 +172,14 @@ int main(int argc, char *argv[]){
             // Don't send the ACK, simulate packet dropping
             expected_packet--;
             printf("(Receiver) Packet dropped, no ACK sent\n");
+            fprintf(r_log, "Packet:%d dropped\n", expected_packet);
         }
     }
+
+    // Close the socket:
+    close(sockfd);
+    // Close the log file:
+    fclose(r_log);
 
     return 0;
 }
