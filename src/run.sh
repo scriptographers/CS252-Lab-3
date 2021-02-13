@@ -1,7 +1,24 @@
 #!/bin/bash
 
-# Usage: bash run.sh
+# Usage: bash run.sh <Senders Port> <Receivers Port> <Number of packets> <Timeout> <Drop probability>
+# Example: bash run.sh 8080 8000 1 1 0.2
 
+N_ARGS=$#
+if [ $N_ARGS -ne 5 ] 
+then
+    echo "Usage: bash $0 <Senders Port> <Receivers Port> <Number of packets> <Timeout> <Drop probability>"
+    exit 1
+fi 
+
+SPORT=$1
+RPORT=$2
+N_PKTS=$3
+TIMEOUT=$4
+DROP_PROB=$5
+
+# Compile:
 gcc -o s.out sender.c
 gcc -o r.out receiver.c
-./r.out 8000 8080 0.5 & ./s.out 8080 8000 5 1 # Order is important
+
+# Run:
+./r.out $RPORT $SPORT $DROP_PROB & ./s.out $SPORT $RPORT $TIMEOUT $N_PKTS # Order is important

@@ -3,7 +3,7 @@
 #include <unistd.h> // Standard POSIX functions, like "close"
 #include <string.h> // String manipulation for string packets etc
 #include <sys/time.h> // For timeval struct
-#include <sys/socket.h> // For socket programming 
+#include <sys/socket.h> // For socket programming
 #include <arpa/inet.h> // Provides definitions for internet operations
 
 int status; // Used for error handling
@@ -26,28 +26,28 @@ int main(int argc, char *argv[]){
     int sockfd = socket(
         AF_INET,    // IPv4
         SOCK_DGRAM, // Specifies UDP socket
-        0           // 0: Default value for the protocol parameter
+        IPPROTO_UDP // UDP protocol, setting this to 0 also works
     );
     if (sockfd < 0){
         perror("(Sender) Error while creating the socket");
-        exit(EXIT_FAILURE); 
+        exit(EXIT_FAILURE);
     }
 
     // Bind the sender explicitly to a given port:
     struct sockaddr_in sen_addr; // Specifies the sender's address
-    memset(&sen_addr, 0, sizeof(sen_addr)); 
-    sen_addr.sin_family = AF_INET; 
-    sen_addr.sin_port = htons(sport); 
-    sen_addr.sin_addr.s_addr = inet_addr(LOCAL_HOST); 
+    memset(&sen_addr, 0, sizeof(sen_addr));
+    sen_addr.sin_family = AF_INET;
+    sen_addr.sin_port = htons(sport); // htons: https://stackoverflow.com/questions/19207745/htons-function-in-socket-programing
+    sen_addr.sin_addr.s_addr = inet_addr(LOCAL_HOST);
 
     status = bind(
-        sockfd, 
-        (const struct sockaddr*) &sen_addr, 
+        sockfd,
+        (const struct sockaddr*) &sen_addr,
         sizeof(struct sockaddr_in)
     );
     if (status != 0){
-        perror("(Sender) Bind failed"); 
-        exit(EXIT_FAILURE); 
+        perror("(Sender) Bind failed");
+        exit(EXIT_FAILURE);
     }
 
     // Specify timeout: Reference: https://stackoverflow.com/questions/13547721/udp-socket-set-timeout
@@ -58,13 +58,13 @@ int main(int argc, char *argv[]){
     // Set the sock options to specify timeout:
     status = setsockopt(
         // The socket:
-        sockfd, 
+        sockfd,
         // The socket layer, more info: https://stackoverflow.com/questions/21515946/what-is-sol-socket-used-for
-        SOL_SOCKET, 
+        SOL_SOCKET,
         // This option allows us to set a timeout
-        SO_RCVTIMEO, 
+        SO_RCVTIMEO,
         // Timeout needs to be specified as a timeval struct
-        &tv, 
+        &tv,
         sizeof(tv)
     );
     if (status != 0){
@@ -76,9 +76,9 @@ int main(int argc, char *argv[]){
     int reuse_flag = 1;
     status = setsockopt(
         // The socket:
-        sockfd, 
+        sockfd,
         // The socket layer, more info: https://stackoverflow.com/questions/21515946/what-is-sol-socket-used-for
-        SOL_SOCKET, 
+        SOL_SOCKET,
         // This option allows your server to bind to an address which is in a TIME_WAIT state 
         SO_REUSEADDR,
         // Setting to true
@@ -92,16 +92,16 @@ int main(int argc, char *argv[]){
 
     // Create the struct for the receiver's address:
     struct sockaddr_in rec_addr; // Specifies the receiver/destination address
-    memset(&rec_addr, 0, sizeof(rec_addr)); 
-    rec_addr.sin_family = AF_INET; 
-    rec_addr.sin_port = htons(rport); 
-    rec_addr.sin_addr.s_addr =  inet_addr(LOCAL_HOST); 
+    memset(&rec_addr, 0, sizeof(rec_addr));
+    rec_addr.sin_family = AF_INET;
+    rec_addr.sin_port = htons(rport);
+    rec_addr.sin_addr.s_addr =  inet_addr(LOCAL_HOST);
     
     // Send the data to the receiver:
     char *message_sent = "Packet:1"; 
-    sendto(
+    status = sendto(
         // Socket:
-        sockfd, 
+        sockfd,
         // Data to be sent:
         message_sent,
         strlen(message_sent), // Size of the data to be sent
@@ -110,35 +110,41 @@ int main(int argc, char *argv[]){
         // Destination Address:
         (const struct sockaddr *) &rec_addr,
         sizeof(rec_addr) // Size of the destination address struct
-    ); 
-    printf("(Sender) Sent: %s\n", message_sent); 
+    );
+    if (status != -1)
+        printf("(Sender) Sent: %s\n", message_sent);
+    else{
+        // Packet not sent
+        perror("(Sender) An error occured while sending the data");
+        exit(EXIT_FAILURE);
+    }
 
     // Wait for receiver's response:
     int len_raddr = sizeof(rec_addr);
-    char message_rec[SIZE]; 
-    int n = recvfrom(
+    char message_rec[SIZE];
+    status = recvfrom(
         // Socket:
-        sockfd, 
+        sockfd,
         // Store the received ACK:
-        message_rec, 
+        message_rec,
         SIZE, // Length of the received message_sent buffer
         // Flags: None
         0,
         // Struct containing src address is returned: 
-        (struct sockaddr *) &rec_addr, 
+        (struct sockaddr *) &rec_addr,
         &len_raddr
     );
-    if (n != -1){
-        message_rec[n] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
-        printf("(Sender) Received: %s\n", message_rec);
+    if (status != -1){
+        message_rec[SIZE] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
+        printf("(Sender) Received: '%s' from IP: %s and Port: %i\n", message_rec, inet_ntoa(rec_addr.sin_addr), ntohs(rec_addr.sin_port));
     }
     else{
         // ACK not received
-        printf("(Sender) ACK not received, sender timed out\n");
+        perror("(Sender) ACK not received, sender timed out");
         exit(EXIT_FAILURE);
     }
 
     // Close the socket:
-    close(sockfd); 
-    return 0; 
-} 
+    close(sockfd);
+    return 0;
+}
