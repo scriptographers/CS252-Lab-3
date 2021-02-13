@@ -6,6 +6,7 @@
 #include <sys/socket.h> 
 #include <arpa/inet.h> 
 
+int status; // Used for error handling
 const int SIZE = 16;   // Length of strings like "Acknowledgment:1", hardcoded
 const char* LOCAL_HOST = "127.0.0.1"; // Standard address for IPv4 loopback traffic
 
@@ -14,7 +15,7 @@ int main(int argc, char *argv[]){
     // Check no. of args specified:
     if (argc != 5){ // 1+4 args are needed
         printf("Usage: %s <SenderPort> <ReceiverPort> <RetransmissionTimer> <NoOfPacketsToBeSent>\n", argv[0]);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     int sport   = atoi(argv[1]); // Sender' port, ascii to integer
     int rport   = atoi(argv[2]); // Receiver's port
@@ -27,16 +28,35 @@ int main(int argc, char *argv[]){
         SOCK_DGRAM, // Specifies UDP socket
         0           // 0: Default value for the protocol parameter
     );
+    if (sockfd < 0){
+        perror("(Sender) Error while creating the socket");
+        exit(EXIT_FAILURE); 
+    }
 
-    // To-do: https://www.geeksforgeeks.org/explicitly-assigning-port-number-client-socket/
-    
+    // Bind the sender explicitly to a given port:
+    struct sockaddr_in sen_addr; // Specifies the sender's address
+    memset(&sen_addr, 0, sizeof(sen_addr)); 
+    sen_addr.sin_family = AF_INET; 
+    sen_addr.sin_port = htons(sport); 
+    sen_addr.sin_addr.s_addr = inet_addr(LOCAL_HOST); 
+
+    status = bind(
+        sockfd, 
+        (const struct sockaddr*) &sen_addr, 
+        sizeof(struct sockaddr_in)
+    );
+    if (status != 0){
+        perror("(Sender) Bind failed"); 
+        exit(EXIT_FAILURE); 
+    }
+
     // Specify timeout: Reference: https://stackoverflow.com/questions/13547721/udp-socket-set-timeout
     struct timeval tv;
     tv.tv_sec  = timeout; // in seconds
     tv.tv_usec = 0; // in microseconds
 
     // Set the sock options to specify timeout:
-    int status = setsockopt(
+    status = setsockopt(
         // The socket:
         sockfd, 
         // The socket layer, more info: https://stackoverflow.com/questions/21515946/what-is-sol-socket-used-for
@@ -47,8 +67,10 @@ int main(int argc, char *argv[]){
         &tv, 
         sizeof(tv)
     );
-    if (status != 0)
-        perror("An error occured while setting the timeout");
+    if (status != 0){
+        perror("(Sender) An error occured while setting the timeout");
+        exit(EXIT_FAILURE);
+    }
 
     // Create the struct for the receiver's address:
     struct sockaddr_in rec_addr; // Specifies the receiver/destination address
@@ -71,7 +93,7 @@ int main(int argc, char *argv[]){
         (const struct sockaddr *) &rec_addr,
         sizeof(rec_addr) // Size of the destination address struct
     ); 
-    printf("Sent to receiver: %s\n", message_sent); 
+    printf("(Sender) Sent: %s\n", message_sent); 
 
     // Wait for receiver's response:
     int len_raddr = sizeof(rec_addr);
@@ -89,7 +111,7 @@ int main(int argc, char *argv[]){
         &len_raddr
     ); 
     message_rec[n] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
-    printf("Receiver response : %s\n", message_rec); 
+    printf("(Sender) Received: %s\n", message_rec); 
 
     // Close the socket:
     close(sockfd); 
