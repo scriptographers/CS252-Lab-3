@@ -7,7 +7,7 @@
 #include <arpa/inet.h> // Provides definitions for internet operations
 
 int status; // Used for error handling
-const int SIZE = 16;   // Length of strings like "Acknowledgment:1", hardcoded
+int SIZE = 16;   // Length of strings like "Acknowledgment:1", hardcoded
 const char* LOCAL_HOST = "127.0.0.1"; // Standard address for IPv4 loopback traffic
 
 int main(int argc, char *argv[]){
@@ -137,13 +137,17 @@ int main(int argc, char *argv[]){
 
         // Wait for receiver's response:
         int len_raddr = sizeof(rec_addr);
+
+        SIZE = 64; // Reset size
         char message_rec[SIZE];
+        memset(message_rec, '\0', sizeof(message_rec));
+
         status = recvfrom(
             // Socket:
             sockfd,
             // Store the received ACK:
             message_rec,
-            SIZE, // Length of the received message_sent buffer
+            sizeof(message_rec), // Length of the received message_sent buffer
             // Flags: None
             0,
             // Struct containing src address is returned: 
@@ -151,7 +155,8 @@ int main(int argc, char *argv[]){
             &len_raddr
         );
         if (status != -1){
-
+            // Reset SIZE depending on received ack's length
+            SIZE = strlen(message_rec);
             message_rec[SIZE] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
             printf("(Sender) Received: '%s' from IP: %s and Port: %i\n\n", message_rec, inet_ntoa(rec_addr.sin_addr), ntohs(rec_addr.sin_port));
 

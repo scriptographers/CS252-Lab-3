@@ -8,7 +8,7 @@
 #include <arpa/inet.h> // Provides definitions for internet operations
 
 int status; // Used for error handling
-const int SIZE = 8; // Length of strings like "Packet:1", hardcoded
+int SIZE = 64; // Length of strings like "Packet:1", hardcoded
 const char* LOCAL_HOST = "127.0.0.1"; // Standard address for IPv4 loopback traffic
 
 int main(int argc, char *argv[]){
@@ -86,13 +86,17 @@ int main(int argc, char *argv[]){
 
         // Listen for the sender's message and store it:
         int len_saddr = sizeof(sen_addr);
+
+        SIZE = 64; // Reset size
         char message_rec[SIZE]; // Stores message received from sender
+        memset(message_rec, '\0', sizeof(message_rec));
+
         status = recvfrom(
             // Socket:
             sockfd,
             // Store the received packet:
             message_rec,
-            SIZE, // Length of the received message_sent buffer
+            sizeof(message_rec), // Length of the received message_sent buffer
             // Flags:
             MSG_WAITALL,
             // Struct containing src address is returned: 
@@ -109,12 +113,13 @@ int main(int argc, char *argv[]){
             break;
         }
         else{
+            SIZE = strlen(message_rec);
             message_rec[SIZE] = '\0'; // A C string is a char array with a binary zero (\0) as the final char
             printf("(Receiver) Received: '%s' from IP: %s and Port: %i\n", message_rec, inet_ntoa(sen_addr.sin_addr), ntohs(sen_addr.sin_port));
             
             // Get ack number from received packet:
             i_ack = (message_rec[SIZE - 1] - '0') + 1; // char to int conversion, packet:1 must receive ack:2 as the acknowledgement
-            
+
             // Check whether this was expected:
             if (i_ack != expected_packet + 1){
                 if (expected_packet == 1){
@@ -141,8 +146,8 @@ int main(int argc, char *argv[]){
         if (drop_flag >= drop_prob){
             
             // Create the ACK in an appropriate format
-            char ack[16] = "Acknowledgment:";
-            char ack_no[128];
+            char ack[] = "Acknowledgment:";
+            char ack_no[64];
             sprintf(ack_no, "%d", i_ack);
             strcat(ack, ack_no);
 
