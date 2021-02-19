@@ -26,7 +26,9 @@ int main(int argc, char *argv[]){
 
     // Initialize the receiver's log file
     FILE *r_log;
+    // Clear contents if any
     r_log = fopen("receiver.txt", "w+"); // This also flushes any content already present
+    fclose(r_log);
 
     // Create a UDP socket (a socket descriptor) for the receiver:
     int sockfd = socket(
@@ -170,7 +172,10 @@ int main(int argc, char *argv[]){
             );
             if (status != -1){
                 printf("(Receiver) Sent: %s\n", ack);
+
+                r_log = fopen("receiver.txt", "a");
                 fprintf(r_log, "Sent: %s\n", ack);
+                fclose(r_log);
             }
             else{
                 perror("(Receiver) An error occured while sending the ACK");
@@ -181,7 +186,10 @@ int main(int argc, char *argv[]){
             // Don't send the ACK, simulate packet dropping
             expected_packet--;
             printf("(Receiver) Packet dropped, no ACK sent\n");
+
+            r_log = fopen("receiver.txt", "a"); // This also flushes any content already present
             fprintf(r_log, "Packet:%d dropped\n", expected_packet);
+            fclose(r_log);
         }
     }
 
