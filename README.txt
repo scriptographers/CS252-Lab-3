@@ -5,7 +5,7 @@ Authors:
 2.) Devansh Jain (190100044)
 3.) Krushnakant Bhattad (190100036)
 
-File Descriptions:
+File Descriptions: (All code is present inside src directory)
 1.) sender.c   : Contains the code for the sender program
 2.) receiver.c : Contains the code for the receiver program
 3.) run.sh : Bash script that compiles both sender and receiver files and runs the experiment
