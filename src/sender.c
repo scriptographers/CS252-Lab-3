@@ -169,7 +169,7 @@ int main(int argc, char *argv[]){
 
             // Check whether the required number of packets have been transmitted:
             if (i_pkt > n_pkts){
-                printf("(Common) All packets sent and received successfully\n");
+                printf("(Common) All packets sent and received successfully. Press CTRL+C to stop.\n");
                 break;
             }
         }

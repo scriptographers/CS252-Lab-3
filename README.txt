@@ -12,3 +12,5 @@ File Descriptions:
     Usage: bash run.sh <Senders Port> <Receivers Port> <Number of packets> <Timeout> <Drop probability>
     Example: bash run.sh 8080 8000 100 5 0.5
     Running this script also creates sender.txt and receiver.txt which contains the required logs.
+
+    Note: Before running the bash script, add the simulated delay separately
