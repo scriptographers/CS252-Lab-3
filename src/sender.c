@@ -161,7 +161,10 @@ int main(int argc, char *argv[]){
             printf("(Sender) Received: '%s' from IP: %s and Port: %i\n\n", message_rec, inet_ntoa(rec_addr.sin_addr), ntohs(rec_addr.sin_port));
 
             // Check whether ACK received has sequence number = i_pkt + 1
-            i_ack = (message_rec[SIZE - 1] - '0');
+            char temp_1[64];
+            strcpy(temp_1, message_rec + 15);
+            i_ack = atoi(temp_1);
+
             if (i_ack == i_pkt + 1){
                 // Received the proper ACK, increment i_pkt
                 i_pkt++;

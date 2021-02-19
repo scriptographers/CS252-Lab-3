@@ -120,6 +120,10 @@ int main(int argc, char *argv[]){
             // Get ack number from received packet:
             i_ack = (message_rec[SIZE - 1] - '0') + 1; // char to int conversion, packet:1 must receive ack:2 as the acknowledgement
 
+            char temp_1[64];
+            strcpy(temp_1, message_rec + 7);
+            i_ack = atoi(temp_1) + 1;
+
             // Check whether this was expected:
             if (i_ack != expected_packet + 1){
                 if (expected_packet == 1){
